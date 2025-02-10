@@ -4,7 +4,7 @@
 
 This project is a Node.js-based AI-powered call assistant that utilizes Twilio for VoIP calls and OpenAI's real-time API for AI-driven responses. The system allows users to initiate phone calls via a web interface, connects the calls through Twilio, and processes real-time speech using OpenAI's GPT-4o model to generate interactive conversations.
 
-## Features
+## Features 🚀
 
 - **Initiate phone calls**: Users can input a phone number on a web interface to start a call.
 - **AI-driven conversation**: The AI assistant listens and responds to the caller dynamically.
@@ -12,14 +12,14 @@ This project is a Node.js-based AI-powered call assistant that utilizes Twilio f
 - **Twilio call recording**: Calls can be recorded for reference.
 - **Customizable assistant personality**: AI is set to be a positive, bubbly assistant fluent in Hebrew with a penchant for dad jokes and subtle rickrolling.
 
-## Prerequisites
+## Prerequisites 📋
 
 - Node.js installed on your system.
 - A Twilio account with API credentials.
 - An OpenAI API key with access to real-time speech processing.
 - (Optional) ngrok for local server exposure.
 
-## Installation
+## Installation 🛠️
 
 1. Clone this repository:
    ```sh
@@ -60,7 +60,7 @@ SERVER_URL_1=https://your-ngrok-url.ngrok.io
    node server.js
    ```
 
-## Configuring Twilio
+## Configuring Twilio 📞
 
 1. Sign up for a Twilio account at [Twilio Console](https://www.twilio.com/console).
 2. Get your **Account SID**, **Auth Token**, and **Twilio Caller ID**.
@@ -68,7 +68,7 @@ SERVER_URL_1=https://your-ngrok-url.ngrok.io
 4. Set the **Voice Request URL** to your server's `/call-twiml` endpoint (e.g., `https://your-ngrok-url.ngrok.io/call-twiml`).
 5. Save and associate this TwiML App with your Twilio phone number.
 
-## Usage
+## Usage 🎯
 
 There are two ways to use the AI-powered call assistant:
 
@@ -81,27 +81,27 @@ There are two ways to use the AI-powered call assistant:
    - Dial the Twilio phone number configured in your Twilio account.
    - The AI assistant will pick up and engage in conversation automatically.
 
-## Technical Overview
+## Technical Overview 🏗️
 
 - **Backend**: Built with `Node.js` and `Express.js`.
 - **WebSocket Integration**: Twilio's media stream connects to OpenAI's real-time speech API.
 - **OpenAI API**: Processes speech input and generates AI-driven responses.
 - **Twilio API**: Handles call initiation and media streaming.
 
-## Customization
+## Customization 🎨
 
 - Modify the AI assistant's behavior in `SYSTEM_MESSAGE`.
 - Change the `VOICE` parameter to adjust the AI’s voice.
 
-## License
+## License 📜
 
 This project is licensed under the MIT License. Feel free to modify and distribute as needed.
 
-## Contributions
+## Contributions 🤝
 
 Contributions are welcome! Feel free to submit a pull request or open an issue for feature suggestions.
 
-## Contact
+## Contact 📩
 
 For any questions or support, reach out to [Your Contact Info].
 
