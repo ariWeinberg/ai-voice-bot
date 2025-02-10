@@ -24,7 +24,7 @@ This project is a Node.js-based AI-powered call assistant that utilizes Twilio f
 1. Clone this repository:
    ```sh
    git clone https://github.com/ariWeinberg/ai-voice-bot.git
-   cd ai-call-assistant
+   cd ai-voice-bot
    ```
 2. Install dependencies:
    ```sh
