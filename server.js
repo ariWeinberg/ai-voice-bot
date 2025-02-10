@@ -25,6 +25,46 @@ const SYSTEM_MESSAGE =
 
 const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
+
+const functionDescription = `
+Call this function when a user asks for a color palette.
+`;
+
+const GsessionUpdate = {
+    type: "session.update",
+    session: {
+      tools: [
+        {
+          type: "function",
+          name: "display_color_palette",
+          description: functionDescription,
+          parameters: {
+            type: "object",
+            strict: true,
+            properties: {
+              theme: {
+                type: "string",
+                description: "Description of the theme for the color scheme.",
+              },
+              colors: {
+                type: "array",
+                description: "Array of five hex color codes based on the theme.",
+                items: {
+                  type: "string",
+                  description: "Hex color code",
+                },
+              },
+            },
+            required: ["theme", "colors"],
+          },
+        },
+      ],
+      tool_choice: "auto",
+    },
+  };
+
+
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -97,9 +137,28 @@ wss.on('connection', async (ws) => {
 
     openaiWs.on('message', (message) => {
         const response = JSON.parse(message);
+
+        //console.log(response);
+        
         if (response.type === 'response.audio.delta' && response.delta && streamSid) {
             const audioPayload = Buffer.from(response.delta, 'base64').toString('base64');
             ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: audioPayload } }));
+        }
+        
+        if (response.type === 'response.function_call_arguments.done') {
+            try {
+                const functionCall = {
+                    name: response.name,
+                    arguments: JSON.parse(response.arguments)
+                };
+                console.log('Reconstructed Function Call:', functionCall);
+
+                if (functionCall.name === 'display_color_palette') {
+                    ws.send(JSON.stringify({ event: 'display_palette', data: functionCall.arguments }));
+                }
+            } catch (error) {
+                console.error('Error parsing function call:', error);
+            }
         }
     });
 
@@ -118,12 +177,11 @@ async function initializeSession(openaiWs) {
             voice: VOICE,
             instructions: SYSTEM_MESSAGE,
             modalities: ['text', 'audio'],
-            tools: [{ type: 'function', name: 'tool_call', description: 'Call the tool.' }],
-            tool_choice: 'auto',
             temperature: 0.8
         }
     };
     openaiWs.send(JSON.stringify(sessionUpdate));
+    openaiWs.send(JSON.stringify(GsessionUpdate));
 }
 
 server.listen(PORT, () => {
