@@ -6,6 +6,7 @@ const twilio = require('twilio');
 const { v4: uuidv4 } = require('uuid');
 const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
+const VoiceResponse = require('twilio/lib/twiml/VoiceResponse');
 
 const app = express();
 const server = http.createServer(app);
@@ -115,6 +116,9 @@ app.post('/call-twiml', (req, res) => {
 });
 
 wss.on('connection', async (ws) => {
+
+    
+    
     const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
     const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'OpenAI-Beta': 'realtime=v1' }
@@ -125,9 +129,18 @@ wss.on('connection', async (ws) => {
     openaiWs.on('open', async () => {
         await initializeSession(openaiWs);
     });
-
+    
     ws.on('message', async (message) => {
         const data = JSON.parse(message);
+        if (data.event === 'start') {
+            //streamSid = data.streamSid;
+            callSid = data.start.callSid;
+            console.log("call SID is: ", callSid);
+            client.calls.get(callSid).recordings.create()
+            .then((recording) => {
+                console.log('Recording SID:', recording.sid);
+            })
+        }
         if (data.event === 'media' && openaiWs.readyState === WebSocket.OPEN) {
             openaiWs.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: data.media.payload }));
         } else if (data.event === 'start') {
