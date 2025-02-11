@@ -23,27 +23,37 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_CALLER_ID = process.env.TWILIO_CALLER_ID;
 const VOICE = 'alloy';
 const SYSTEM_MESSAGE =
-"You are a polite and efficient virtual assistant with a friendly tone. " +
-"Always start by introducing yourself in Hebrew, explaining that you are an AI assistant here to help gather details about the upcoming event on Thursday. " +
-"Let the user know that you will ask a few quick questions to ensure everything is properly arranged. " +
-"First, ask for their name. Then, ask if they plan to attend the event. " +
-"If they are attending, gradually collect the following details: " +
-"- Are they coming alone or with others? How many people in total? " +
-"- How do they plan to arrive – by car, on foot, or public transportation? " +
-"- Will they stay for the entire event or only part of it? " +
-"Once all information is collected, summarize what you have gathered and read it back to the user, allowing them to correct any mistakes. " +
-"If they confirm the details are correct, call the function 'save_data_json' to save the conversation summary. " +
-"After saving, politely thank the user, end the conversation, and call the function 'hangup'. " +
-"Always communicate in Hebrew, prefer audio responses over text, and ensure the conversation remains polite, patient, and friendly.";
+    "Shalom! 😊 You are a friendly and polite virtual assistant who loves helping people. " +
+    "Start by introducing yourself in Hebrew in a warm and casual way. " +
+    "Briefly explain that you're here to check if they’re planning to attend the event on Thursday. " +
+    "Make the conversation feel natural—don't rush, and let the user respond comfortably. " +
+
+    "First, ask for their name. Then, ask if they are planning to come. " +
+
+    "👉 **If they say NO:** " +
+    "- Politely thank them for their time. " +
+    "- Save the data with default values: isAttending: False, numberOfAttendees: 0, arrivalMethod: 'other', stayingForFullEvent: False. " +
+    "- End the conversation politely and call 'hangup' immediately after saving. " +
+
+    "👉 **If they say YES:** " +
+    "- Gradually and naturally ask: " +
+    "  - Are they coming alone or with others? How many people in total? " +
+    "  - How do they plan to arrive – by car, on foot, or public transportation? " +
+    "  - Will they stay for the whole event or just part of it? " +
+
+    "Once all the details are gathered, **repeat back the information** and ask if everything is correct. " +
+    "If they confirm, save the data using 'save_data_json'. " +
+
+    "Finally, politely thank the user for their time, say goodbye in a friendly way, and call 'hangup' to end the call. " +
+
+    "Always communicate in Hebrew, prefer audio over text, and make sure the conversation stays **warm, friendly, and unrushed**! 😊";
 
 
 
 const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
 
-const functionDescription = `
-Call this function after every line to store the summary of the conversation till now.
-`;
+
 
 
 const Tevent = {
@@ -68,7 +78,7 @@ const Tevent = {
       content: [
         {
           type: "input_text",
-          text: "great! now greet the user and end the call.",
+          text: "great! now greet the user. Thank them for the details and then by calling the function 'hangup' with no arguments end the call.",
         }
       ]
     },
@@ -81,52 +91,85 @@ const TCRevent = {
     },
   };
 
+const Functions = {
+    hangup: {
+        descriptor: {
+            type: "function",
+            name: "hangup",
+            description: "Politely end the call after confirming and saving the details.",
+        },
+        function: (openaiWs, callSid) => {
+            client.calls(callSid).update({ status: 'completed' });
+            console.log("Call ended.");
+        }
+    },
+    save_data_json: {
+        descriptor: {
+            type: "function",
+            name: "save_data_json",
+            description: "Save user-provided event attendance data in a structured JSON file.",
+            parameters: {
+                type: "object",
+                strict: true,
+                properties: {
+                    userName: {
+                        type: "string",
+                        description: "The user's full name.",
+                    },
+                    isAttending: {
+                        type: "boolean",
+                        description: "Whether the user is attending the event.",
+                    },
+                    numberOfAttendees: {
+                        type: "integer",
+                        description: "Total number of people attending, including the user.",
+                    },
+                    arrivalMethod: {
+                        type: "string",
+                        description: "How they are arriving at the event.",
+                        enum: ["car", "on foot", "public transportation", "other"],
+                    },
+                    stayingForFullEvent: {
+                        type: "boolean",
+                        description: "Whether they plan to stay for the entire event.",
+                    },
+                },
+                required: ["userName", "isAttending", "numberOfAttendees", "arrivalMethod", "stayingForFullEvent"],
+            },
+        },
+        function: (openaiWs, callSid, userName, isAttending, numberOfAttendees, arrivalMethod, stayingForFullEvent) => {
+            const data = {
+                userName,
+                isAttending,
+                numberOfAttendees,
+                arrivalMethod,
+                stayingForFullEvent,
+            };
+            console.log("Data saved:", data);
+            const filePath = './data/calls/' + callSid + '/summary_data.json';
+            fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', (err) => {
+                if (err) {
+                    console.error('Error writing file:', err);
+                } else {
+                    console.log('File has been saved.');
+                }
+            });
 
+            openaiWs.send(JSON.stringify(TCloseEvent));
+            openaiWs.send(JSON.stringify(TCRevent));
+        }
+    }                
+}
 
-const GsessionUpdate = {
+const GsessionUpdate = 
+{
   type: "session.update",
   session: {
       tools: [
-          {
-              type: "function",
-              name: "hangup",
-              description: "Politely end the call after confirming and saving the details.",
-          },
-          {
-              type: "function",
-              name: "save_data_json",
-              description: "Save user-provided event attendance data in a structured JSON file.",
-              parameters: {
-                  type: "object",
-                  strict: true,
-                  properties: {
-                      userName: {
-                          type: "string",
-                          description: "The user's full name.",
-                      },
-                      isAttending: {
-                          type: "boolean",
-                          description: "Whether the user is attending the event.",
-                      },
-                      numberOfAttendees: {
-                          type: "integer",
-                          description: "Total number of people attending, including the user.",
-                      },
-                      arrivalMethod: {
-                          type: "string",
-                          description: "How they are arriving at the event.",
-                          enum: ["car", "on foot", "public transportation", "other"],
-                      },
-                      stayingForFullEvent: {
-                          type: "boolean",
-                          description: "Whether they plan to stay for the entire event.",
-                      },
-                  },
-                  required: ["userName", "isAttending", "numberOfAttendees", "arrivalMethod", "stayingForFullEvent"],
-              },
-          }
+        Functions.hangup.descriptor,
+        Functions.save_data_json.descriptor
       ],
-      tool_choice: "required",
+      tool_choice: "auto",
   },
 };
 
@@ -174,9 +217,9 @@ app.post('/initiate-call', async (req, res) => {
 
 app.post('/call-twiml', (req, res) => {
     const response = new twilio.twiml.VoiceResponse();
-    response.say("Please wait while we connect your call.");
-    response.pause({ length: 1 });
-    response.say("O.K. you can start talking!");
+    // response.say("Please wait while we connect your call.");
+    // response.pause({ length: 0.3 });
+    // response.say("O.K. you can start talking!");
     response.connect().stream({ url: `wss://${new URL(SERVER_URL).host}/media-stream` });
     res.type('text/xml');
     res.send(response.toString());
@@ -278,20 +321,14 @@ wss.on('connection', async (ws) => {
         }
 
         if (response.type === 'response.function_call_arguments.done') {
-            try {
-                const functionCall = {
-                    name: response.name,
-                    arguments: JSON.parse(response.arguments)
-                };
-                console.log('Reconstructed Function Call:', functionCall);
+            
+            if (callSid === null) {
+                console.error('Call SID is null. | got a function call without a call SID.');
+                return;
+            }
 
-                if (functionCall.name === 'save_data_json') {
-                    openaiWs.send(JSON.stringify(TCloseEvent));
-                    openaiWs.send(JSON.stringify(TCRevent));
-                }
-                else if (functionCall.name === 'hangup') {
-                    client.calls(callSid).update({ status: 'completed' });
-                }
+            try {
+                Functions[response.name].function(openaiWs, callSid, ...Object.values(JSON.parse(response.arguments)));
             } catch (error) {
                 console.error('Error parsing function call:', error);
             }
@@ -317,7 +354,6 @@ async function initializeSession(openaiWs) {
         }
     };
     openaiWs.send(JSON.stringify(sessionUpdate));
-    GsessionUpdate.session.tool_choice = "auto";
     openaiWs.send(JSON.stringify(GsessionUpdate));
     openaiWs.send(JSON.stringify(Tevent));
     openaiWs.send(JSON.stringify(TCRevent));
