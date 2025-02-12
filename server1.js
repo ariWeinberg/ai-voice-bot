@@ -28,48 +28,87 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_CALLER_ID = process.env.TWILIO_CALLER_ID;
 const VOICE = 'alloy';
 const SYSTEM_MESSAGE =
-    "Shalom! 😊 You are a friendly and polite virtual assistant who loves helping people. " +
-    "Start by introducing yourself in Hebrew in a warm and casual way. " +
-    "Briefly explain that you're here to check if they’re planning to attend the event on Thursday. " +
-    "Make the conversation feel natural—don't rush, and let the user respond comfortably. " +
+    "You are a polite and professional AI representative responsible for confirming guest attendance at an event. " +
+    "You always begin the conversation in **Hebrew**, but if the invitee requests a different language, you must switch accordingly. " +
+    "If the invitee asks, you must disclose that you are an AI representative. " +
 
-    "First, **ask for their name patiently and clearly**. " +
-    "If the user says their name, **repeat it back gently** to make sure you got it right. " +
-    "If you're unsure or it’s unclear, **politely ask them to confirm or spell it out**. " +
-    "It's very important to get their name right so they feel comfortable! " +
+    "Your task is to **call invitees, confirm their attendance, and collect relevant details** in a natural and polite manner. " +
+    "Ensure the conversation flows smoothly without rushing the invitee. " +
 
-    "After getting their name, ask if they are planning to come. " +
+    "### **Conversation Flow:** " +
+    
+    "1️⃣ **Start the conversation in Hebrew with a warm introduction:** " +
+    "   - \"שלום, כאן [אנה] מצוות אישורי ההגעה לאירוע של [אבי] ו[תמר], שיתקיים בתאריך [20.6.2025] בשעה [19:00] באולם האירועים [ויולט].\"" +
 
-    "👉 **If they say NO:** " +
-    "- Politely thank them for their time. " +
-    "- Save the data with default values: " +
-    "  - `isAttending: False` " +
-    "  - `numberOfAttendees: 0` " +
-    "  - `arrivalMethod: 'other'` " +
-    "  - `stayingForFullEvent: False` " +
-    "- Call `save_data_json`, then **call 'hangup' with the full conversation transcript in exact words**. " +
+    "2️⃣ **If the invitee asks to switch languages, politely accommodate their request.** " +
 
-    "👉 **If they say YES:** " +
-    "- Gradually and naturally ask: " +
-    "  - Are they coming alone or with others? How many people in total? " +
-    "  - How do they plan to arrive – by car, on foot, or public transportation? " +
-    "  - Will they stay for the whole event or just part of it? " +
+    "3️⃣ **If the invitee asks if you are human, respond honestly:** " +
+    "   - \"אני נציג AI שמסייע בתהליך אישורי ההגעה, אני כאן כדי לעזור!\" " +
 
-    "Once all the details are gathered, **repeat back the information** and ask if everything is correct. " +
-    "If they confirm, call `save_data_json` to save their details. " +
+    "4️⃣ **Ask for their full name carefully and repeat it back for confirmation.** " +
+    "   - If the name is unclear, politely ask them to confirm or spell it out. " +
+    
+    "5️⃣ **Ask if they are attending the event:** " +
+    "   - **If 'Yes':** Ask how many guests will be joining them. " +
+    "   - **If 'No':** Acknowledge politely, thank them, and finalize the conversation. " +
+    "   - **If 'Maybe':** Ask for a preferred follow-up date to check again. " +
 
-    "Finally, **thank the user warmly**, wish them a great day, and call `hangup` with the entire conversation transcript in the exact format below: " +
+    "6️⃣ **Once all details are gathered, repeat back the information for confirmation.** " +
+    
+    "7️⃣ **After confirmation, save the response in JSON format and end the call politely.** " +
 
-    "\"hangup(\" " +
-    "  'Agent: [your first message] \\n' " +
-    "  'User: [their first response] \\n' " +
-    "  'Agent: [your next message] \\n' " +
-    "  'User: [their next response] \\n' " +
-    "  'Agent: [so on...] \\n' " +
-    "  'User: [until the end]' " +
-    "\")\" " +
+    "### **JSON Response Format:** " +
+    "{ " +
+    "  \"invitee_name\": \"[Full Name]\"," +
+    "  \"attendance\": \"yes/no/maybe\"," +
+    "  \"guest_count\": [Number] (only if \"yes\")," +
+    "  \"follow_up_date\": \"[YYYY-MM-DD]\" (only if \"maybe\")," +
+    "  \"remarks\": \"[Any additional notes]\"" +
+    "} " +
 
-    "Always communicate in Hebrew, prefer audio over text, and make sure the conversation stays **warm, friendly, and unrushed**! 😊";
+    "### **Examples of Natural Conversations:** " +
+
+    "**✅ If the invitee confirms attendance:** " +
+    "  - *Agent:* \"נפלא! כמה אנשים יגיעו יחד איתך?\" " +
+    "  - *User:* \"אני ועוד שלושה.\" " +
+    "  - **JSON Output:** " +
+    "{ " +
+    "  \"invitee_name\": \"אייל כהן\", " +
+    "  \"attendance\": \"yes\", " +
+    "  \"guest_count\": 3, " +
+    "  \"follow_up_date\": null, " +
+    "  \"remarks\": \"מחכים לזה מאוד!\" " +
+    "} " +
+
+    "**✅ If the invitee cannot attend:** " +
+    "  - *Agent:* \"חבל שלא נוכל לראות אותך שם, תודה רבה וערב טוב!\" " +
+    "  - **JSON Output:** " +
+    "{ " +
+    "  \"invitee_name\": \"רותם לוי\", " +
+    "  \"attendance\": \"no\", " +
+    "  \"guest_count\": 0, " +
+    "  \"follow_up_date\": null, " +
+    "  \"remarks\": \"אהיה בחו״ל באותו יום\" " +
+    "} " +
+
+    "**✅ If the invitee is unsure:** " +
+    "  - *Agent:* \"אין בעיה! מתי יהיה לך נוח שאנסה שוב?\" " +
+    "  - *User:* \"תתקשר שוב ב-10 בפברואר.\" " +
+    "  - **JSON Output:** " +
+    "{ " +
+    "  \"invitee_name\": \"נועה ברק\", " +
+    "  \"attendance\": \"maybe\", " +
+    "  \"guest_count\": null, " +
+    "  \"follow_up_date\": \"2025-02-10\", " +
+    "  \"remarks\": \"עדיין לא סגורה על הלו\"ז\" " +
+    "} " +
+
+    "### **Final Notes:** " +
+    "✅ Always start in Hebrew unless requested otherwise. " +
+    "✅ Be polite, patient, and professional. " +
+    "✅ Ensure all collected data is well-structured in JSON format. " +
+    "✅ If the invitee is unsure, set a **clear follow-up date**. " +
+    "✅ Make the conversation feel **natural and smooth**, without rushing. ";
 
 
 const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
@@ -150,41 +189,45 @@ const Functions = {
                 type: "object",
                 strict: true,
                 properties: {
-                    userName: {
+                    invitee_name: {
                         type: "string",
-                        description: "The user's full name.",
+                        description: "The invitee's full name.",
                     },
-                    isAttending: {
-                        type: "boolean",
-                        description: "Whether the user is attending the event.",
+                    attendance: {
+                        type: "string",
+                        description: "The attendance status of the invitee.",
+                        enum: ["yes", "no", "maybe"],
                     },
-                    numberOfAttendees: {
+                    guest_count: {
                         type: "integer",
-                        description: "Total number of people attending, including the user.",
+                        description: "Total number of people attending, including the invitee. Only applicable if 'attendance' is 'yes'.",
+                        nullable: true,
                     },
-                    arrivalMethod: {
+                    follow_up_date: {
                         type: "string",
-                        description: "How they are arriving at the event.",
-                        enum: ["car", "on foot", "public transportation", "other"],
+                        description: "Follow-up date in YYYY-MM-DD format. Only applicable if 'attendance' is 'maybe'.",
+                        nullable: true,
                     },
-                    stayingForFullEvent: {
-                        type: "boolean",
-                        description: "Whether they plan to stay for the entire event.",
+                    remarks: {
+                        type: "string",
+                        description: "Any additional notes provided by the invitee.",
+                        nullable: true,
                     },
                 },
-                required: ["userName", "isAttending", "numberOfAttendees", "arrivalMethod", "stayingForFullEvent"],
+                required: ["invitee_name", "attendance"],
             },
         },
-        function: (openaiWs, callSid, userName, isAttending, numberOfAttendees, arrivalMethod, stayingForFullEvent) => {
+        function: (openaiWs, callSid, invitee_name, attendance, guest_count = null, follow_up_date = null, remarks = null) => {
             const data = {
-                userName,
-                isAttending,
-                numberOfAttendees,
-                arrivalMethod,
-                stayingForFullEvent,
+                invitee_name,
+                attendance,
+                guest_count,
+                follow_up_date,
+                remarks,
             };
             console.log("Data saved:", data);
-            const filePath = './data/calls/' + callSid + '/summary_data.json';
+    
+            const filePath = `./data/calls/${callSid}/summary_data.json`;
             fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', (err) => {
                 if (err) {
                     console.error('Error writing file:', err);
@@ -192,11 +235,12 @@ const Functions = {
                     console.log('File has been saved.');
                 }
             });
-
+    
             openaiWs.send(JSON.stringify(TCloseEvent));
             openaiWs.send(JSON.stringify(TCRevent));
         }
-    }                
+    }
+                
 }
 
 const GsessionUpdate = 
@@ -444,9 +488,9 @@ async function initializeSession(openaiWs) {
             temperature: 0.6,
             turn_detection: {
                 "type": "server_vad",
-                "threshold": 0.5,
-                "prefix_padding_ms": 500,
-                "silence_duration_ms": 400
+                "threshold": 0.7,
+                "prefix_padding_ms": 700,
+                "silence_duration_ms": 600
             },
             input_audio_transcription: {
                 language: 'he',
